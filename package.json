@@ -2,7 +2,11 @@
   "name": "car-management-system",
   "version": "1.0.0",
   "description": "Car Management System with Vue.js and Node.js",
-  "main": "server.js",  "scripts": {
+  "main": "server.js",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },

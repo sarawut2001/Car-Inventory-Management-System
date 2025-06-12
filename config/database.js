@@ -3,7 +3,15 @@ const path = require('path');
 
 class Database {
   constructor() {
-    this.db = new sqlite3.Database(path.join(__dirname, '../database.sqlite'));
+    const dbPath = path.join(__dirname, '../database.sqlite');
+    
+    // Ensure database directory exists
+    const dbDir = path.dirname(dbPath);
+    if (!require('fs').existsSync(dbDir)) {
+      require('fs').mkdirSync(dbDir, { recursive: true });
+    }
+    
+    this.db = new sqlite3.Database(dbPath);
     this.init();
   }
 

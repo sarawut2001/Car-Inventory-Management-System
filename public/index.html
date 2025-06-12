@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Management System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 3rem 0;
+        }
+        .car-logo {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            background: #f8f9fa;
+            border-radius: 50%;
+            padding: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-right: 10px;
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            cursor: pointer;
+            z-index: 1000;
+        }
+        .stats-card {
+            background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .price-tag {
+            background: #28a745;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-weight: bold;
+        }
+        .quantity-badge {
+            background: #17a2b8;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Navigation -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div class="container">
+                <a class="navbar-brand" href="#">
+                    <i class="fas fa-car"></i> Car Management System
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" @click="currentView = 'dashboard'">Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" @click="currentView = 'cars'">Cars</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" @click="showAddCarModal">Add Car</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <div class="hero-section" v-if="currentView === 'dashboard'">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-8">
+                        <h1 class="display-4">Welcome to Car Management System</h1>
+                        <p class="lead">Manage your car inventory with ease and efficiency</p>
+                        <button class="btn btn-light btn-lg" @click="currentView = 'cars'">
+                            <i class="fas fa-car"></i> View All Cars
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div class="container mt-4" v-if="currentView === 'dashboard'">
+            <!-- Stats Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-3">
+                    <div class="card stats-card">
+                        <div class="card-body text-center">
+                            <i class="fas fa-car fa-2x mb-2"></i>
+                            <h3>{{ stats.total_cars }}</h3>
+                            <p>Total Models</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-warehouse fa-2x mb-2"></i>
+                            <h3>{{ stats.total_quantity }}</h3>
+                            <p>Total Inventory</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-dollar-sign fa-2x mb-2"></i>
+                            <h3>${{ formatPrice(stats.avg_price) }}</h3>
+                            <p>Average Price</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body text-center">
+                            <i class="fas fa-crown fa-2x mb-2"></i>
+                            <h3>${{ formatPrice(stats.max_price) }}</h3>
+                            <p>Highest Price</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Cars -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-clock"></i> Recent Cars</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-3" v-for="car in cars.slice(0, 6)" :key="car.id">
+                                    <div class="card card-hover">
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ car.make }} {{ car.model }}</h6>
+                                            <p class="card-text">
+                                                <span class="price-tag">${{ formatPrice(car.price) }}</span>
+                                                <span class="quantity-badge ms-2">{{ car.quantity }} in stock</span>
+                                            </p>
+                                            <small class="text-muted">{{ car.body_style }} • {{ car.body_size }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cars List -->
+        <div class="container mt-4" v-if="currentView === 'cars'">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h2><i class="fas fa-car"></i> Car Inventory</h2>
+                </div>
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Search cars..." v-model="searchQuery" @input="searchCars">
+                        <button class="btn btn-outline-secondary" type="button">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div class="text-center" v-if="loading">
+                <div class="loading"></div>
+                <p>Loading cars...</p>
+            </div>
+
+            <!-- Cars Grid -->
+            <div class="row" v-else>
+                <div class="col-lg-4 col-md-6 mb-4" v-for="car in displayedCars" :key="car.id">
+                    <div class="card card-hover h-100" @click="showCarDetails(car)">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <img 
+                                    :src="getCarLogo(car.make)" 
+                                    :alt="car.make + ' logo'"
+                                    class="car-logo"
+                                    @error="handleLogoError($event)"
+                                >
+                                <h5 class="mb-0">{{ car.make }} {{ car.model }}</h5>
+                            </div>                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" @click.stop>
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" @click.stop="editCar(car)">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a></li>
+                                    <li><a class="dropdown-item text-danger" href="#" @click.stop="deleteCar(car.id)">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-2">
+                                <div class="col-6">
+                                    <strong>MSRP:</strong><br>
+                                    <span class="text-muted">${{ formatPrice(car.msrp) }}</span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Price:</strong><br>
+                                    <span class="price-tag">${{ formatPrice(car.price) }}</span>
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-6">
+                                    <strong>Body:</strong><br>
+                                    <span class="text-muted">{{ car.body_style }}</span>
+                                </div>
+                                <div class="col-6">
+                                    <strong>Size:</strong><br>
+                                    <span class="text-muted">{{ car.body_size }}</span>
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-12">
+                                    <strong>Horsepower:</strong><br>
+                                    <span class="text-muted">{{ car.horsepower }}</span>
+                                </div>
+                            </div>
+                            <div class="row mb-2">
+                                <div class="col-12">
+                                    <strong>Fuel Economy:</strong><br>
+                                    <span class="text-muted">{{ car.highway_fuel_economy || 'N/A' }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between align-items-center">
+                            <span class="quantity-badge">{{ car.quantity }} in stock</span>
+                            <small class="text-muted">ID: {{ car.id }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No cars message -->
+            <div class="text-center" v-if="displayedCars.length === 0 && !loading">
+                <i class="fas fa-car fa-3x text-muted mb-3"></i>
+                <h4>No cars found</h4>
+                <p class="text-muted">Try adjusting your search query or add a new car.</p>
+            </div>
+        </div>
+
+        <!-- Add/Edit Car Modal -->
+        <div class="modal fade" id="carModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ isEditing ? 'Edit Car' : 'Add New Car' }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form @submit.prevent="saveCar">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Make</label>
+                                    <input type="text" class="form-control" v-model="currentCar.make" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Model</label>
+                                    <input type="text" class="form-control" v-model="currentCar.model" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">MSRP</label>
+                                    <input type="number" class="form-control" v-model="currentCar.msrp" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Price</label>
+                                    <input type="number" class="form-control" v-model="currentCar.price" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Body Size</label>
+                                    <select class="form-select" v-model="currentCar.body_size" required>
+                                        <option value="">Select Size</option>
+                                        <option value="Compact">Compact</option>
+                                        <option value="Midsize">Midsize</option>
+                                        <option value="Large">Large</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Body Style</label>
+                                    <select class="form-select" v-model="currentCar.body_style" required>
+                                        <option value="">Select Style</option>
+                                        <option value="SUV">SUV</option>
+                                        <option value="Sedan">Sedan</option>
+                                        <option value="Coupe">Coupe</option>
+                                        <option value="Convertible">Convertible</option>
+                                        <option value="Convertible SUV">Convertible SUV</option>
+                                        <option value="Cargo Van">Cargo Van</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Horsepower</label>
+                                    <input type="text" class="form-control" v-model="currentCar.horsepower" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Highway Fuel Economy</label>
+                                    <input type="text" class="form-control" v-model="currentCar.highway_fuel_economy">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Quantity</label>
+                                <input type="number" class="form-control" v-model="currentCar.quantity" required min="0">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" @click="saveCar">
+                            {{ isEditing ? 'Update' : 'Add' }} Car
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Car Details Modal -->
+        <div class="modal fade" id="carDetailsModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div class="d-flex align-items-center">
+                            <img 
+                                :src="selectedCar ? getCarLogo(selectedCar.make) : ''" 
+                                :alt="selectedCar ? selectedCar.make + ' logo' : ''"
+                                class="car-logo me-2"
+                                @error="handleLogoError($event)"
+                            >
+                            <h5 class="modal-title mb-0">{{ selectedCar ? `${selectedCar.make} ${selectedCar.model}` : '' }}</h5>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" v-if="selectedCar">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <h6>Price Information</h6>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <p><strong>MSRP:</strong> ${{ formatPrice(selectedCar.msrp) }}</p>
+                                        <p class="mb-0"><strong>Our Price:</strong> <span class="price-tag">${{ formatPrice(selectedCar.price) }}</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <h6>Vehicle Information</h6>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <p><strong>Body Style:</strong> {{ selectedCar.body_style }}</p>
+                                        <p class="mb-0"><strong>Size:</strong> {{ selectedCar.body_size }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <h6>Performance</h6>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <p class="mb-0"><strong>Horsepower:</strong> {{ selectedCar.horsepower }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <h6>Efficiency</h6>
+                                <div class="card">
+                                    <div class="card-body">
+                                        <p class="mb-0"><strong>Highway Fuel Economy:</strong> {{ selectedCar.highway_fuel_economy || 'N/A' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card mt-2">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="quantity-badge">{{ selectedCar.quantity }} in stock</span>
+                                    <small class="text-muted">ID: {{ selectedCar.id }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div class="toast-container position-fixed top-0 end-0 p-3">
+            <div class="toast" id="successToast" role="alert">
+                <div class="toast-header bg-success text-white">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong class="me-auto">Success</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    {{ successMessage }}
+                </div>
+            </div>
+            <div class="toast" id="errorToast" role="alert">
+                <div class="toast-header bg-danger text-white">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <strong class="me-auto">Error</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    {{ errorMessage }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    currentView: 'dashboard',
+                    cars: [],
+                    displayedCars: [],
+                    stats: {
+                        total_cars: 0,
+                        total_quantity: 0,
+                        avg_price: 0,
+                        max_price: 0,
+                        min_price: 0
+                    },
+                    searchQuery: '',
+                    loading: false,
+                    isEditing: false,
+                    currentCar: {
+                        make: '',
+                        model: '',
+                        msrp: '',
+                        price: '',
+                        body_size: '',
+                        body_style: '',
+                        horsepower: '',
+                        highway_fuel_economy: '',
+                        quantity: ''
+                    },
+                    selectedCar: null,
+                    successMessage: '',
+                    errorMessage: ''
+                }
+            },
+            mounted() {
+                this.loadCars();
+                this.loadStats();
+            },
+            methods: {
+                async loadCars() {
+                    this.loading = true;
+                    try {
+                        const response = await fetch('/api/cars');
+                        if (response.ok) {
+                            this.cars = await response.json();
+                            this.displayedCars = this.cars;
+                        } else {
+                            this.showError('Failed to load cars');
+                        }
+                    } catch (error) {
+                        this.showError('Error loading cars: ' + error.message);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async loadStats() {
+                    try {
+                        const response = await fetch('/api/cars/stats');
+                        if (response.ok) {
+                            this.stats = await response.json();
+                        }
+                    } catch (error) {
+                        console.error('Error loading stats:', error);
+                    }
+                },
+
+                async searchCars() {
+                    if (this.searchQuery.trim() === '') {
+                        this.displayedCars = this.cars;
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/api/cars/search?q=${encodeURIComponent(this.searchQuery)}`);
+                        if (response.ok) {
+                            this.displayedCars = await response.json();
+                        }
+                    } catch (error) {
+                        this.showError('Error searching cars: ' + error.message);
+                    }
+                },
+
+                showAddCarModal() {
+                    this.isEditing = false;
+                    this.currentCar = {
+                        make: '',
+                        model: '',
+                        msrp: '',
+                        price: '',
+                        body_size: '',
+                        body_style: '',
+                        horsepower: '',
+                        highway_fuel_economy: '',
+                        quantity: ''
+                    };
+                    const modal = new bootstrap.Modal(document.getElementById('carModal'));
+                    modal.show();
+                },
+
+                editCar(car) {
+                    this.isEditing = true;
+                    this.currentCar = { ...car };
+                    const modal = new bootstrap.Modal(document.getElementById('carModal'));
+                    modal.show();
+                },
+
+                async saveCar() {
+                    try {
+                        const url = this.isEditing ? `/api/cars/${this.currentCar.id}` : '/api/cars';
+                        const method = this.isEditing ? 'PUT' : 'POST';
+
+                        const response = await fetch(url, {
+                            method: method,
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(this.currentCar)
+                        });
+
+                        if (response.ok) {
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('carModal'));
+                            modal.hide();
+                            
+                            this.showSuccess(this.isEditing ? 'Car updated successfully!' : 'Car added successfully!');
+                            await this.loadCars();
+                            await this.loadStats();
+                        } else {
+                            const error = await response.json();
+                            this.showError(error.error || 'Failed to save car');
+                        }
+                    } catch (error) {
+                        this.showError('Error saving car: ' + error.message);
+                    }
+                },
+
+                async deleteCar(carId) {
+                    if (!confirm('Are you sure you want to delete this car?')) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/api/cars/${carId}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (response.ok) {
+                            this.showSuccess('Car deleted successfully!');
+                            await this.loadCars();
+                            await this.loadStats();
+                        } else {
+                            const error = await response.json();
+                            this.showError(error.error || 'Failed to delete car');
+                        }
+                    } catch (error) {
+                        this.showError('Error deleting car: ' + error.message);
+                    }
+                },
+
+                formatPrice(price) {
+                    if (!price) return '0';
+                    return new Intl.NumberFormat('en-US').format(price);
+                },
+
+                getCarLogo(make) {
+                    const logoMap = {
+                        'BMW': 'https://www.carlogos.org/car-logos/bmw-logo-2020.png',
+                        'Mercedes-Benz': 'https://www.carlogos.org/car-logos/mercedes-benz-logo.png',
+                        'Audi': 'https://www.carlogos.org/car-logos/audi-logo.png',
+                        'Toyota': 'https://www.carlogos.org/car-logos/toyota-logo.png',
+                        'Honda': 'https://www.carlogos.org/car-logos/honda-logo.png',
+                        'Ford': 'https://www.carlogos.org/car-logos/ford-logo-2017.png',
+                        'Chevrolet': 'https://www.carlogos.org/car-logos/chevrolet-logo.png',
+                        'Nissan': 'https://www.carlogos.org/car-logos/nissan-logo.png',
+                        'Hyundai': 'https://www.carlogos.org/car-logos/hyundai-logo.png',
+                        'Kia': 'https://www.carlogos.org/car-logos/kia-logo-2021.png',
+                        'Volkswagen': 'https://www.carlogos.org/car-logos/volkswagen-logo.png',
+                        'Porsche': 'https://www.carlogos.org/car-logos/porsche-logo.png',
+                        'Ferrari': 'https://www.carlogos.org/car-logos/ferrari-logo.png',
+                        'Lamborghini': 'https://www.carlogos.org/car-logos/lamborghini-logo.png',
+                        'Maserati': 'https://www.carlogos.org/car-logos/maserati-logo.png',
+                        'Bentley': 'https://www.carlogos.org/car-logos/bentley-logo.png',
+                        'Rolls-Royce': 'https://www.carlogos.org/car-logos/rolls-royce-logo.png',
+                        'Lexus': 'https://www.carlogos.org/car-logos/lexus-logo.png',
+                        'Infiniti': 'https://www.carlogos.org/car-logos/infiniti-logo.png',
+                        'Acura': 'https://www.carlogos.org/car-logos/acura-logo.png',
+                        'Aston Martin': 'https://www.carlogos.org/car-logos/aston-martin-logo.png'
+                    };
+                    
+                    return logoMap[make] || `https://logo.clearbit.com/${make.toLowerCase().replace(/\s+/g, '')}.com`;
+                },
+
+                handleLogoError(event) {
+                    // Replace with a generic car icon on error
+                    event.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBkPSJNNDk5Ljk5IDIwNi45YTUwLjQgNTAuNCAwIDAgMC00Mi40LTQyLjRMMzk5LjggMTU2bC0zMy42LTQ0LjhhNTAuNCA1MC40IDAgMCAwLTQxLjYtMjEuOUgxODcuNGE1MC40IDUwLjQgMCAwIDAtNDEuNiAyMS45TDExMi4yIDE1NmwtNTcuOCA4LjVhNTAuNCA1MC40IDAgMCAwLTQyLjQgNDIuNEwuNCAyNTZsNS42IDIwLjlhNTAuNCA1MC40IDAgMCAwIDQyLjQgNDIuNEwxMTIuMiAzNTZsMzMuNiA0NC44YTUwLjQgNTAuNCAwIDAgMCA0MS42IDIxLjloMTM3LjJhNTAuNCA1MC40IDAgMCAwIDQxLjYtMjEuOWwzMy42LTQ0LjhMMzk5LjggMzU2YTUwLjQgNTAuNCAwIDAgMCA0Mi40LTQyLjRsNS42LTIwLjktNS42LTIwLjl6bS0yOTUgMTI4LjJhNjQuMSA2NC4xIDAgMSAxIDY0LjEtNjQuMSA2NC4xIDY0LjEgMCAwIDEtNjQuMSA2NC4xem0yMjQgMzJIMjg4di0zMmgxNDAuOXpNMjg4IDI4OHYtMzJoMTQwLjl6bTIyNC0zMmE2NC4xIDY0LjEgMCAxIDEtNjQuMS02NC4xIDY0LjEgNjQuMSAwIDAgMSA2NC4xIDY0LjF6Ii8+PC9zdmc+';
+                    event.target.style.padding = '8px';
+                },
+
+                showSuccess(message) {
+                    this.successMessage = message;
+                    const toast = new bootstrap.Toast(document.getElementById('successToast'));
+                    toast.show();
+                },
+
+                showError(message) {
+                    this.errorMessage = message;
+                    const toast = new bootstrap.Toast(document.getElementById('errorToast'));
+                    toast.show();
+                },
+
+                showCarDetails(car) {
+                    this.selectedCar = car;
+                    const modal = new bootstrap.Modal(document.getElementById('carDetailsModal'));
+                    modal.show();
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
